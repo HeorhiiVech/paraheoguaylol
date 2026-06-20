@@ -1,201 +1,178 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ name }} - Details</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <style>
-        body { background-color: #121212; color: #e0e0e0; font-size: 0.85rem; }
-        
-        .stats-card { background-color: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-        .metric-title { color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
-        .metric-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
-        
-        .wr-high { color: #2ecc71; }
-        .wr-low { color: #e74c3c; }
+{% extends "base.html" %}
+{% block title %}{{ name }}{% endblock %}
+{% block nav_players %}active{% endblock %}
 
-        .match-container { background-color: #1a1a1a; border-radius: 8px; margin-bottom: 15px; overflow: hidden; border: 1px solid #333; }
-        .match-header { padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .match-header.win { background: linear-gradient(90deg, #1c2e24 0%, #121212 100%); border-left: 5px solid #2ecc71; }
-        .match-header.loss { background: linear-gradient(90deg, #2e1c1c 0%, #121212 100%); border-left: 5px solid #e74c3c; }
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    .hero { background: linear-gradient(135deg, var(--panel), var(--panel-2));
+        border:1px solid var(--border); border-radius:10px; padding:18px 22px; margin-bottom:14px; }
+    .hero h2 { margin:0; font-weight:800; }
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-top:14px; }
+    .kpi { background:#101015; border:1px solid var(--border); border-radius:7px; padding:9px 11px; }
+    .kpi .v { font-size:1.3rem; font-weight:800; color:#fff; }
+    .kpi .l { font-size:0.66rem; color:#cfcfd6; text-transform:uppercase; letter-spacing:.5px; }
+    .panel-title { color:var(--gold); font-size:0.82rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:.5px; margin-bottom:10px; }
+    table.data { width:100%; font-size:0.78rem; }
+    table.data th { color:#cfcfd6; font-weight:600; border-bottom:1px solid var(--border);
+        padding:6px; font-size:0.68rem; text-transform:uppercase; }
+    table.data td { padding:6px; border-bottom:1px solid #1c1c22; vertical-align:middle; color:#f2f2f5; }
+    .champ-icon { width:36px; height:36px; border-radius:50%; margin-right:8px; }
+    .h-items img { width:22px; height:22px; border-radius:3px; margin-right:2px; border:1px solid #3a3a44; }
+    .res-w { color:var(--blue); font-weight:700; } .res-l { color:var(--red); font-weight:700; }
+    .wr-bar { height:5px; background:#2a2a33; border-radius:3px; overflow:hidden; width:60px; display:inline-block; vertical-align:middle; }
+    .wr-bar > span { display:block; height:100%; background:var(--green); }
+    .substat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; }
+    .substat { background:#101015; border:1px solid var(--border); border-radius:6px; padding:8px 10px; }
+    .substat .v { font-size:1.05rem; font-weight:800; color:#fff; }
+    .substat .l { font-size:0.66rem; color:#cfcfd6; text-transform:uppercase; letter-spacing:.4px; }
+    .radar-wrap { background:#101015; border:1px solid var(--border); border-radius:8px; padding:12px;
+        max-height:300px; }
+    .radar-wrap canvas { max-height:260px; }
+</style>
+{% endblock %}
 
-        .p-icon { width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; }
-        .champ-icon-large { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #444; }
-        .p-items img { width: 32px; height: 32px; border-radius: 4px; margin-right: 2px; border: 1px solid #444; }
-        
-        /* Сортируемые заголовки */
-        th.sortable { cursor: pointer; user-select: none; }
-        th.sortable:hover { color: #f1c40f !important; }
-
-        .rec-box { background-color: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 12px; border-left: 3px solid #f1c40f; }
-        
-        /* Класс для ярко-белого текста */
-        .stat-white { color: #ffffff !important; font-weight: 500; }
-    </style>
-</head>
-<body>
-    <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="text-warning">{{ name }}</h1>
-            <a href="/players" class="btn btn-outline-warning btn-sm">← Back to Players</a>
+{% block content %}
+<div class="hero">
+    <div class="d-flex justify-content-between align-items-start flex-wrap">
+        <div>
+            <h2>{{ name }}{% if is_roster %}<span class="roster-tag" style="font-size:0.8rem; vertical-align:super;">US</span>{% endif %}</h2>
+            <span style="color:#cfcfd6;">{{ role }} · {{ total.games }} games</span>
         </div>
-
-        <div class="stats-card">
-            <div class="row text-center">
-                <div class="col">
-                    <div class="metric-title">Matches</div>
-                    <div class="metric-value">{{ total.games }}</div>
-                </div>
-                <div class="col">
-                    <div class="metric-title">Winrate</div>
-                    {% set total_wr = (total.wins / total.games * 100)|int if total.games > 0 else 0 %}
-                    <div class="metric-value {% if total_wr < 49 %}wr-low{% else %}wr-high{% endif %}">{{ total_wr }}%</div>
-                </div>
-                <div class="col">
-                    <div class="metric-title">Avg DPM</div>
-                    <div class="metric-value">{{ total.dpm }}</div>
-                </div>
-                <div class="col">
-                    <div class="metric-title">Avg GPM</div>
-                    <div class="metric-value">{{ total.gpm }}</div>
-                </div>
-                <div class="col">
-                    <div class="metric-title">Avg CSPM</div>
-                    <div class="metric-value">{{ total.cspm }}</div>
-                </div>
-            </div>
+        <div class="text-end">
+            <div class="{% if total.winrate < 50 %}wr-low{% else %}wr-high{% endif %}" style="font-size:2rem; font-weight:800;">{{ total.winrate }}%</div>
+            <div style="color:#cfcfd6;">{{ total.wins }}W / {{ total.games - total.wins }}L</div>
         </div>
+    </div>
+    <div class="kpi-grid">
+        <div class="kpi"><div class="v">{{ total.kda }}</div><div class="l">KDA</div></div>
+        <div class="kpi"><div class="v">{{ total.avg_kills }}/{{ total.avg_deaths }}/{{ total.avg_assists }}</div><div class="l">Avg K/D/A</div></div>
+        <div class="kpi"><div class="v">{{ total.dpm }}</div><div class="l">DPM</div></div>
+        <div class="kpi"><div class="v">{{ total.gpm }}</div><div class="l">GPM</div></div>
+        <div class="kpi"><div class="v">{{ total.cspm }}</div><div class="l">CS / min</div></div>
+        <div class="kpi"><div class="v">{{ total.avg_vision }}</div><div class="l">Vision / game</div></div>
+        <div class="kpi"><div class="v">{{ total.avg_td15 }}</div><div class="l">Takedowns before 15m</div></div>
+        <div class="kpi"><div class="v">{{ total.death_pct }}%</div><div class="l">Time spent dead</div></div>
+    </div>
+</div>
 
-        <div class="row">
-            <div class="col-md-8">
-                <h3 class="text-warning mb-3">Champion Pool <small class="text-muted" style="font-size: 0.6rem;">(click headers to sort)</small></h3>
-                <table class="table table-dark table-hover align-middle mb-5 border-secondary" id="champTable" style="font-size: 0.85rem; border: 1px solid #333;">
-                    <thead>
-                        <tr class="text-muted">
-                            <th class="sortable" onclick="sortTable(0)">Champion</th>
-                            <th class="sortable" onclick="sortTable(1)">Games</th>
-                            <th class="sortable" onclick="sortTable(2)">Winrate</th>
-                            <th class="sortable" onclick="sortTable(3)">KDA</th>
-                            <th class="sortable" onclick="sortTable(4)">DPM</th>
-                            <th class="sortable" onclick="sortTable(5)">GPM</th>
-                            <th class="sortable" onclick="sortTable(6)">CSPM</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for c in champs %}
-                        <tr>
-                            <td data-val="{{ c.name }}">
-                                <img src="{{ c.icon }}" class="p-icon">
-                                <span class="fw-bold text-light">{{ c.name }}</span>
-                                <span class="text-muted small ms-1">({{ c.games }}g)</span>
-                            </td>
-                            <td data-val="{{ c.games }}" class="text-light fw-bold">{{ c.games }}</td>
-                            <td data-val="{{ c.wr }}" class="{% if c.wr >= 50 %}wr-high{% else %}wr-low{% endif %} fw-bold">{{ c.wr }}%</td>
-                            <td data-val="{{ c.kda }}" class="text-light">{{ c.kda }}</td>
-                            <td data-val="{{ c.dpm }}" class="text-light">{{ c.dpm }}</td>
-                            <td data-val="{{ c.gpm }}" class="text-light">{{ c.gpm }}</td>
-                            <td data-val="{{ c.cspm }}" class="text-light">{{ c.cspm }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-
-                <h3 class="text-warning mb-3">Match History</h3>
-                {% for m in history %}
-                <div class="match-container">
-                    <div class="match-header {% if m.win %}win{% else %}loss{% endif %}">
-                        <span class="fw-bold">{% if m.win %}VICTORY{% else %}DEFEAT{% endif %}</span>
-                        <span class="text-white small">duration {{ m.duration }}</span>
-                    </div>
-                    
-                    <div class="p-3 d-flex align-items-center gap-4 bg-dark">
-                        <div class="d-flex align-items-center gap-3" style="width: 180px;">
-                            <img src="{{ m.icon }}" class="champ-icon-large">
-                            <span class="fw-bold text-light fs-5">{{ m.champion }}</span>
-                        </div>
-                        
-                        <div style="width: 100px;">
-                            <div class="text-white fw-bold fs-6">{{ m.kda }}</div>
-                            <div class="text-white small">KDA</div>
-                        </div>
-                        
-                        <div style="width: 120px;" class="small">
-                            <div class="text-white"><span class="stat-white">{{ m.dpm }}</span> DPM</div>
-                            <div class="text-white"><span class="stat-white">{{ m.cspm }}</span> CS/M</div>
-                            <div class="text-white"><span class="stat-white">{{ m.gpm }}</span> GPM</div>
-                        </div>
-                        
-                        <div class="p-items d-flex gap-1 ms-auto">
-                            {% for item_url in m.inventory %}
-                            <img src="{{ item_url }}">
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="col-md-4">
-                <h3 class="text-warning mb-3">Synergy</h3>
-                <p class="text-white mb-3" style="font-size: 0.75rem; line-height: 1.2;">
-                    <b>Priority: </b><br>
-                    1. By highest winrate partners. <br>
-                    2. Top performers by KDA in the database if no shared matches found.
-                </p>
-                {% for r in recs %}
-                <div class="rec-box mb-3">
-                    <div class="small text-warning fw-bold mb-1">{{ r.role }}</div>
-                    <a href="/player/{{ r.name|urlencode }}" class="text-light text-decoration-none fw-bold d-block mb-1">{{ r.name }}</a>
-                    <div class="small text-info mb-2">{{ r.reason }}</div>
-                    <div class="mb-2">
-                        {% for icon in r.icons %}
-                        <img src="{{ icon }}" style="width:24px; border-radius:50%; margin-right:2px; border: 1px solid #444;">
-                        {% endfor %}
-                    </div>
-                    <div style="font-size: 0.7rem; color: #888;">{{ r.stats }}</div>
-                </div>
-                {% endfor %}
+<div class="row g-3 mb-1 align-items-stretch">
+    <div class="col-lg-4">
+        <div class="panel p-3 h-100 d-flex flex-column">
+            <div class="panel-title">Player profile</div>
+            <div class="radar-wrap flex-grow-1 d-flex align-items-center justify-content-center">
+                <canvas id="radarChart"></canvas>
             </div>
         </div>
     </div>
+    <div class="col-lg-8">
+        <div class="panel p-3 h-100">
+            <div class="panel-title">Combat &amp; macro stats (per game average)</div>
+            <div class="substat-grid">
+                <div class="substat"><div class="v">{{ total.avg_dmg_struct }}</div><div class="l">Damage to structures</div></div>
+                <div class="substat"><div class="v">{{ total.dmg_struct_pm }}</div><div class="l">Structure dmg / min</div></div>
+                <div class="substat"><div class="v">{{ total.avg_self_mitigated }}</div><div class="l">Self-mitigated dmg</div></div>
+                <div class="substat"><div class="v">{{ total.avg_cc }}</div><div class="l">CC on champions (s)</div></div>
+                <div class="substat"><div class="v">{{ total.avg_objectives }}</div><div class="l">Objectives / game</div></div>
+                <div class="substat"><div class="v">{{ total.avg_vision }}</div><div class="l">Vision score</div></div>
+                <div class="substat"><div class="v">{{ total.avg_td15 }}</div><div class="l">Takedowns before 15m</div></div>
+                <div class="substat"><div class="v">{{ total.death_pct }}%</div><div class="l">Time spent dead</div></div>
+                {% if is_jungle %}
+                <div class="substat"><div class="v">{{ total.avg_enemy_jungle }}</div><div class="l">Enemy jungle CS</div></div>
+                {% endif %}
+                {% if is_support %}
+                <div class="substat"><div class="v">{{ total.avg_wards }}</div><div class="l">Wards placed</div></div>
+                <div class="substat"><div class="v">{{ total.avg_wards_killed }}</div><div class="l">Wards killed</div></div>
+                <div class="substat"><div class="v">{{ total.avg_control_wards }}</div><div class="l">Control wards</div></div>
+                <div class="substat"><div class="v">{{ total.avg_heal_shield }}</div><div class="l">Heal + shield on allies</div></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 
-    <script>
-    function sortTable(n) {
-        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-        table = document.getElementById("champTable");
-        switching = true;
-        dir = "desc"; // По умолчанию сортируем от большего к меньшему
-        
-        while (switching) {
-            switching = false;
-            rows = table.rows;
-            for (i = 1; i < (rows.length - 1); i++) {
-                shouldSwitch = false;
-                x = rows[i].getElementsByTagName("TD")[n].getAttribute("data-val");
-                y = rows[i + 1].getElementsByTagName("TD")[n].getAttribute("data-val");
-                
-                // Проверяем, число это или строка
-                let valX = isNaN(parseFloat(x)) ? x.toLowerCase() : parseFloat(x);
-                let valY = isNaN(parseFloat(y)) ? y.toLowerCase() : parseFloat(y);
+<div class="row g-3 mt-1">
+    <div class="col-lg-5">
+        <div class="panel p-3">
+            <div class="panel-title">Champion pool</div>
+            <table class="data">
+                <thead><tr><th>Champion</th><th>G</th><th>WR</th><th>KDA</th><th>DPM</th><th>CS/m</th></tr></thead>
+                <tbody>
+                {% for c in champs %}
+                <tr>
+                    <td><img src="{{ c.icon }}" class="champ-icon" onerror="this.style.visibility='hidden'">{{ c.name }}</td>
+                    <td>{{ c.games }}</td>
+                    <td><span class="{% if c.wr < 50 %}wr-low{% else %}wr-high{% endif %}">{{ c.wr }}%</span>
+                        <span class="wr-bar"><span style="width:{{ c.wr }}%"></span></span></td>
+                    <td>{{ c.kda }}</td>
+                    <td>{{ c.dpm }}</td>
+                    <td>{{ c.cspm }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-                if (dir == "asc") {
-                    if (valX > valY) { shouldSwitch = true; break; }
-                } else if (dir == "desc") {
-                    if (valX < valY) { shouldSwitch = true; break; }
-                }
-            }
-            if (shouldSwitch) {
-                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                switching = true;
-                switchcount ++;
-            } else {
-                if (switchcount == 0 && dir == "desc") {
-                    dir = "asc";
-                    switching = true;
-                }
+    <div class="col-lg-7">
+        <div class="panel p-3">
+            <div class="panel-title">Match history</div>
+            <table class="data">
+                <thead><tr><th>Champion</th><th>Result</th><th>KDA</th><th>DPM</th><th>CS/m</th><th>Vis</th><th>Time</th><th>Build</th></tr></thead>
+                <tbody>
+                {% for h in history %}
+                <tr>
+                    <td><img src="{{ h.icon }}" class="champ-icon" onerror="this.style.visibility='hidden'">{{ h.champion }}</td>
+                    <td>{% if h.win %}<span class="res-w">WIN</span>{% else %}<span class="res-l">LOSS</span>{% endif %}</td>
+                    <td style="color:#fff;">{{ h.kda }}</td>
+                    <td>{{ h.dpm }}</td>
+                    <td>{{ h.cspm }}</td>
+                    <td>{{ h.vision }}</td>
+                    <td style="color:#cfcfd6;">{{ h.duration }}</td>
+                    <td class="h-items">{% for url in h.inventory %}<img src="{{ url }}" onerror="this.style.display='none'">{% endfor %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<a href="/players" class="btn btn-sm btn-outline-secondary mt-3">&larr; Back to players</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ctx = document.getElementById('radarChart');
+new Chart(ctx, {
+    type: 'radar',
+    data: {
+        labels: {{ radar['labels']|tojson }},
+        datasets: [{
+            label: '{{ name }}',
+            data: {{ radar['values']|tojson }},
+            fill: true,
+            backgroundColor: 'rgba(241,196,15,0.18)',
+            borderColor: '#f1c40f',
+            borderWidth: 2,
+            pointBackgroundColor: '#f1c40f',
+            pointRadius: 4,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            r: {
+                min: 0, max: 100,
+                angleLines: { color: '#2a2a33' },
+                grid: { color: '#2a2a33' },
+                pointLabels: { color: '#f2f2f5', font: { size: 13, weight: '600' } },
+                ticks: { display: false, stepSize: 25 }
             }
         }
     }
-    </script>
-</body>
-</html>
+});
+</script>
+{% endblock %}
