@@ -1,101 +1,87 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>ScoutHub - Match History</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <style>
-        body { background-color: #121212; color: #e0e0e0; font-size: 0.85rem; }
-        .nav-link { color: #aaa; }
-        .nav-link.active { color: #f1c40f; font-weight: bold; }
-        .upload-card { background-color: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #eee; }
-        .match-container { background-color: #1a1a1a; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; overflow: hidden;}
-        .participants-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-        .participants-table td { padding: 8px; border-bottom: 1px solid #222; }
-        .p-icon { width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; }
-        .p-items img { width: 20px; height: 20px; border-radius: 3px; margin-right: 2px; border: 1px solid #444;}
-        .p-name { color: #eee; text-decoration: none; font-weight: bold; }
-        
-        .team-blue { border-right: 1px solid #333; }
-        .win-blue { color: #3498db; font-weight: bold; font-size: 1rem; text-transform: uppercase;}
-        .win-red { color: #e74c3c; font-weight: bold; font-size: 1rem; text-transform: uppercase;}
-    </style>
-</head>
-<body>
-    <div class="container mt-4">
-        <nav class="nav mb-4 border-bottom border-secondary">
-            <a class="nav-link active" href="/">Match History</a>
-            <a class="nav-link" href="/players">Players Database</a>
-        </nav>
+{% extends "base.html" %}
+{% block title %}Match History{% endblock %}
+{% block nav_history %}active{% endblock %}
 
-        <div class="upload-card p-4 mb-4">
-            <h4 class="text-warning">Upload New Replays (.rofl)</h4>
-            <form action="/" method="post" enctype="multipart/form-data" class="d-flex gap-2">
-                <input type="file" name="files" class="form-control form-control-sm bg-dark text-white border-secondary" multiple>
-                <button type="submit" class="btn btn-sm btn-warning">Process Files</button>
-            </form>
-        </div>
+{% block head %}
+<style>
+    .match-card { background: var(--panel); border:1px solid var(--border); border-radius:8px;
+        margin-bottom:14px; overflow:hidden; }
+    .match-head { background: var(--panel-2); padding:6px 12px; display:flex;
+        justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+    .win-blue { color: var(--blue); font-weight:700; text-transform:uppercase; }
+    .win-red  { color: var(--red);  font-weight:700; text-transform:uppercase; }
+    .ptable { width:100%; font-size:0.74rem; }
+    .ptable td { padding:6px 8px; border-bottom:1px solid #1f1f26; vertical-align:middle; }
+    .team-blue { border-right:1px solid var(--border); }
+    .p-icon { width:26px; height:26px; border-radius:50%; margin-right:7px; }
+    .p-items img { width:19px; height:19px; border-radius:3px; margin-right:2px; border:1px solid #3a3a44; }
+    .obj-bar { display:flex; gap:6px; padding:6px 12px; background:#101015; flex-wrap:nowrap;
+        border-top:1px solid var(--border); align-items:center; }
+    .obj-divider { color:#fff; flex:1 1 auto; text-align:center; }
+</style>
+{% endblock %}
 
-        <div class="row">
-            <div class="col-md-12">
-                <h3 class="text-warning mb-3">Recent Matches</h3>
-                {% for m in games %}
-                <div class="match-container">
-                    <div class="p-2 bg-dark d-flex justify-content-between align-items-center border-bottom border-secondary">
-                        <span class="text-muted small" style="width: 150px;">Match ID: {{ m.id }}</span>
-                        
-                        <span class="{% if 'Blue' in m.winner_text %}win-blue{% else %}win-red{% endif %}">
-                            {{ m.winner_text }}
-                        </span>
-                        
-                        <span class="badge bg-secondary text-end" style="width: 150px;">duration {{ m.duration }}</span>
-                    </div>
-                    
-                    <div class="row g-0">
-                        <div class="col-md-6 team-blue">
-                            <table class="participants-table">
-                                {% for p in m.blue_team %}
-                                <tr>
-                                    <td style="width: 180px;">
-                                        <img src="{{ p.icon }}" class="p-icon">
-                                        <a href="/player/{{ p.name|urlencode }}" class="p-name">{{ p.name }}</a>
-                                    </td>
-                                    <td style="width: 80px; font-weight: bold; color: #fff;">{{ p.kda }}</td>
-                                    <td style="width: 80px; color: #aaa;">{{ p.dpm }} DPM</td>
-                                    <td class="p-items">
-                                        {% for item_url in p.inventory %}
-                                        <img src="{{ item_url }}">
-                                        {% endfor %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </table>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <table class="participants-table">
-                                {% for p in m.red_team %}
-                                <tr>
-                                    <td style="width: 180px;">
-                                        <img src="{{ p.icon }}" class="p-icon">
-                                        <a href="/player/{{ p.name|urlencode }}" class="p-name">{{ p.name }}</a>
-                                    </td>
-                                    <td style="width: 80px; font-weight: bold; color: #fff;">{{ p.kda }}</td>
-                                    <td style="width: 80px; color: #aaa;">{{ p.dpm }} DPM</td>
-                                    <td class="p-items">
-                                        {% for item_url in p.inventory %}
-                                        <img src="{{ item_url }}">
-                                        {% endfor %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+{% block content %}
+<div class="panel p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <h6 class="text-warning mb-0">Upload replays (.rofl)</h6>
+        <form action="/" method="post" enctype="multipart/form-data" class="d-flex gap-2" style="max-width:520px; width:60%;">
+            <input type="file" name="files" class="form-control form-control-sm bg-dark text-white border-secondary" multiple>
+            <button type="submit" class="btn btn-sm btn-warning fw-bold">Process</button>
+        </form>
     </div>
-</body>
-</html>
+</div>
+
+{% for m in games %}
+<div class="match-card">
+    <div class="match-head">
+        <span class="text-muted small">#{{ m.id }}</span>
+        <span class="{% if 'Blue' in m.winner_text %}win-blue{% elif 'Red' in m.winner_text %}win-red{% else %}text-muted{% endif %}">{{ m.winner_text }}</span>
+        <span class="badge bg-secondary">{{ m.duration }}</span>
+    </div>
+
+    <div class="row g-0">
+        {% for side, team in [('blue', m.blue_team), ('red', m.red_team)] %}
+        <div class="col-md-6 {% if side=='blue' %}team-blue{% endif %}">
+            <table class="ptable">
+                {% for p in team %}
+                <tr>
+                    <td style="width:180px;">
+                        <img src="{{ p.icon }}" class="p-icon" onerror="this.style.visibility='hidden'">
+                        <a href="/player/{{ p.name|urlencode }}" class="p-name {% if p.is_roster %}roster{% endif %}">{{ p.name }}</a>
+                        {% if p.is_roster %}<span class="roster-tag">US</span>{% endif %}
+                    </td>
+                    <td style="width:74px; font-weight:700; color:#fff;">{{ p.kda }}</td>
+                    <td style="width:78px; color:#f2f2f5;">{{ p.dpm }} DPM</td>
+                    <td class="p-items">
+                        {% for url in p.inventory %}<img src="{{ url }}" onerror="this.style.display='none'">{% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="obj-bar">
+        <span class="obj-side-label win-blue">BLUE</span>
+        <span class="obj-pill">Kills <b>{{ m.objectives.blue.k }}</b></span>
+        <span class="obj-pill">Dragons <b>{{ m.objectives.blue.d }}</b></span>
+        <span class="obj-pill">Herald <b>{{ m.objectives.blue.h }}</b></span>
+        <span class="obj-pill">Grubs <b>{{ m.objectives.blue.g }}</b></span>
+        <span class="obj-pill">Baron <b>{{ m.objectives.blue.b }}</b></span>
+        {% if m.objectives.blue.a or m.objectives.red.a %}<span class="obj-pill">Atakhan <b>{{ m.objectives.blue.a }}</b></span>{% endif %}
+        <span class="obj-divider">|</span>
+        <span class="obj-side-label win-red">RED</span>
+        <span class="obj-pill">Kills <b>{{ m.objectives.red.k }}</b></span>
+        <span class="obj-pill">Dragons <b>{{ m.objectives.red.d }}</b></span>
+        <span class="obj-pill">Herald <b>{{ m.objectives.red.h }}</b></span>
+        <span class="obj-pill">Grubs <b>{{ m.objectives.red.g }}</b></span>
+        <span class="obj-pill">Baron <b>{{ m.objectives.red.b }}</b></span>
+        {% if m.objectives.blue.a or m.objectives.red.a %}<span class="obj-pill">Atakhan <b>{{ m.objectives.red.a }}</b></span>{% endif %}
+    </div>
+</div>
+{% else %}
+<div class="panel p-4 text-center text-muted">No matches yet. Upload some replays to get started.</div>
+{% endfor %}
+{% endblock %}
