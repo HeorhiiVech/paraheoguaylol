@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Team Stats{% endblock %}
+{% block nav_team %}active{% endblock %}
+
+{% block head %}
+<style>
+    .panel-title { color:var(--gold); font-size:0.8rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:.5px; margin-bottom:12px; }
+    .roster-row { display:flex; align-items:center; padding:9px 6px; border-bottom:1px solid #1c1c22; gap:12px; }
+    .role-badge { width:74px; font-size:0.7rem; font-weight:700; color:var(--gold); letter-spacing:.5px; }
+    .pick-icon { width:26px; height:26px; border-radius:50%; border:1px solid #3a3a44; margin-right:3px; }
+    .pick-wrap { display:flex; flex-wrap:wrap; gap:2px; flex:1; }
+    .pick { position:relative; }
+    .pick .cnt { position:absolute; bottom:-2px; right:1px; background:#000; color:#fff;
+        font-size:0.55rem; border-radius:3px; padding:0 2px; line-height:1.1; }
+    .obj-card { background:#101015; border:1px solid var(--border); border-radius:8px; padding:14px; text-align:center; }
+    .obj-card .icon { font-size:1.6rem; }
+    .obj-card .num { font-size:1.5rem; font-weight:800; color:#fff; }
+    .obj-card .vs { font-size:0.7rem; color:var(--muted); }
+    .obj-card .lbl { font-size:0.68rem; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+    .obj-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+
+    .duo-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; }
+    @media (max-width:900px) { .duo-grid { grid-template-columns:1fr; } }
+    .duo-card { background:#101015; border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+    .duo-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+        padding-bottom:8px; border-bottom:1px solid var(--border); margin-bottom:6px; }
+    .duo-label { font-size:0.78rem; font-weight:800; color:var(--gold); letter-spacing:.5px;
+        text-transform:uppercase; }
+    .duo-players { font-size:0.74rem; color:#f2f2f5; }
+    .duo-summary { margin-left:auto; font-size:0.78rem; font-weight:700; }
+    .duo-row { display:flex; align-items:center; justify-content:space-between;
+        padding:6px 2px; border-bottom:1px solid #1c1c22; }
+    .duo-row:last-child { border-bottom:none; }
+    .duo-champs { display:flex; align-items:center; gap:6px; min-width:0; }
+    .duo-champs img { width:28px; height:28px; border-radius:50%; border:1px solid #3a3a44; flex-shrink:0; }
+    .duo-names { font-size:0.74rem; color:#f2f2f5; margin-left:4px; white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis; }
+    .duo-stats { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .duo-games { font-size:0.74rem; color:#cfcfd6; }
+    .duo-wr { font-size:0.82rem; font-weight:800; }
+    .duo-empty { font-size:0.72rem; color:#cfcfd6; font-style:italic; padding:6px 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="panel p-3">
+            <div class="panel-title">Roster — picks, games & winrate</div>
+            {% for r in roster %}
+            <div class="roster-row">
+                <span class="role-badge">{{ r.role }}</span>
+                {% if r.missing %}
+                    <span class="text-muted fst-italic">{{ r.name }} — no games recorded</span>
+                {% else %}
+                    <div style="width:150px;">
+                        <a href="/player/{{ r.name|urlencode }}" class="p-name roster">{{ r.name }}</a>
+                        <div class="small text-muted">{{ r.kda }} KDA</div>
+                    </div>
+                    <div class="pick-wrap">
+                        {% for c in r.picks %}
+                        <span class="pick"><img src="{{ c.icon }}" class="pick-icon" title="{{ c.name }} ({{ c.count }})" onerror="this.style.display='none'"><span class="cnt">{{ c.count }}</span></span>
+                        {% endfor %}
+                    </div>
+                    <div style="width:100px; text-align:right;">
+                        <span class="{% if r.winrate < 50 %}wr-low{% else %}wr-high{% endif %}" style="font-size:1.1rem;">{{ r.winrate }}%</span>
+                        <div class="small text-muted">{{ r.wins }}W/{{ r.losses }}L</div>
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="panel p-3 mb-3">
+            <div class="panel-title">Team record</div>
+            <div class="d-flex justify-content-around text-center">
+                <div><div style="font-size:2rem; font-weight:800;" class="{% if obj.winrate < 50 %}wr-low{% else %}wr-high{% endif %}">{{ obj.winrate }}%</div><div class="lbl text-muted small">Winrate</div></div>
+                <div><div style="font-size:2rem; font-weight:800; color:#fff;">{{ obj.games }}</div><div class="text-muted small">Games</div></div>
+                <div><div style="font-size:2rem; font-weight:800; color:#fff;">{{ obj.wins }}</div><div class="text-muted small">Wins</div></div>
+            </div>
+        </div>
+
+        <div class="panel p-3">
+            <div class="panel-title">Objective control (us vs enemy)</div>
+            <div class="obj-grid">
+                <div class="obj-card"><div class="num">{{ obj.dragons }}</div><div class="vs">vs {{ obj.enemy_dragons }}</div><div class="lbl">Dragons</div></div>
+                <div class="obj-card"><div class="num">{{ obj.heralds }}</div><div class="vs">vs {{ obj.enemy_heralds }}</div><div class="lbl">Herald</div></div>
+                <div class="obj-card"><div class="num">{{ obj.grubs }}</div><div class="vs">vs {{ obj.enemy_grubs }}</div><div class="lbl">Grubs</div></div>
+                <div class="obj-card"><div class="num">{{ obj.barons }}</div><div class="vs">vs {{ obj.enemy_barons }}</div><div class="lbl">Baron</div></div>
+                {% if obj.atakhan %}<div class="obj-card"><div class="num">{{ obj.atakhan }}</div><div class="lbl">Atakhan</div></div>{% endif %}
+            </div>
+            <div class="text-muted small mt-2">Averaged across {{ obj.games }} matches where the roster played.</div>
+        </div>
+    </div>
+</div>
+
+<div class="panel p-3 mt-3">
+    <div class="panel-title">Duo champion synergies</div>
+    <div class="duo-grid">
+        {% for d in duos %}
+        <div class="duo-card">
+            <div class="duo-head">
+                <span class="duo-label">{{ d.label }}</span>
+                <span class="duo-players">{{ d.player1 }} <span style="color:#cfcfd6;">+</span> {{ d.player2 }}</span>
+                {% if d.games %}
+                <span class="duo-summary {% if d.winrate < 50 %}wr-low{% else %}wr-high{% endif %}">
+                    {{ d.winrate }}% · {{ d.wins }}W/{{ d.games - d.wins }}L
+                </span>
+                {% endif %}
+            </div>
+            {% if d.combos %}
+                {% for c in d.combos %}
+                <div class="duo-row">
+                    <div class="duo-champs">
+                        <img src="{{ c.icon1 }}" onerror="this.style.display='none'">
+                        <span style="color:#cfcfd6;">+</span>
+                        <img src="{{ c.icon2 }}" onerror="this.style.display='none'">
+                        <span class="duo-names">{{ c.c1 }} + {{ c.c2 }}</span>
+                    </div>
+                    <div class="duo-stats">
+                        <span class="duo-games">{{ c.games }}G</span>
+                        <span class="duo-wr {% if c.wr < 50 %}wr-low{% else %}wr-high{% endif %}">{{ c.wr }}%</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="duo-empty">No shared games yet.</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

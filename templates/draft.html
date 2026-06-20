@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Draft Board{% endblock %}
+{% block nav_draft %}active{% endblock %}
+
+{% block head %}
+<style>
+    .panel-title { color:var(--gold); font-size:0.8rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:.5px; margin-bottom:10px; }
+    .lane { background: var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:10px; }
+    .lane-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .lane-role { font-size:0.72rem; font-weight:700; color:var(--gold); letter-spacing:.5px; }
+    .lane-player { font-size:0.72rem; color:var(--muted); }
+    .pool { display:flex; flex-wrap:wrap; gap:5px; }
+    .pick-chip { display:flex; align-items:center; gap:5px; background:var(--panel-2);
+        border:1px solid var(--border); border-radius:20px; padding:3px 9px 3px 3px; cursor:pointer;
+        font-size:0.72rem; transition:all .12s; }
+    .pick-chip:hover { border-color:var(--gold); }
+    .pick-chip.selected { border-color:var(--gold); background:rgba(241,196,15,.12); }
+    .pick-chip img { width:24px; height:24px; border-radius:50%; border:1px solid #3a3a44; }
+    .pick-chip .wr { font-weight:700; }
+    .empty-note { font-size:0.72rem; color:var(--muted); font-style:italic; }
+
+    .draft-summary { position:sticky; top:12px; }
+    .slot { display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #1c1c22; min-height:48px; }
+    .slot-icon { width:34px; height:34px; border-radius:50%; border:1px solid #3a3a44; }
+    .slot-empty { width:34px; height:34px; border-radius:50%; border:1px dashed #3a3a44; background:#101015; }
+    .big-wr { font-size:2.4rem; font-weight:800; }
+    .disclaimer { font-size:0.68rem; color:var(--muted); border-left:2px solid var(--border); padding-left:8px; margin-top:10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="text-warning mb-0">Build a draft from your roster's pool</h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="resetDraft()">Reset</button>
+        </div>
+
+        {% for role, data in pool.items() %}
+        <div class="lane" data-role="{{ role }}">
+            <div class="lane-head">
+                <span class="lane-role">{{ role }}</span>
+                <span class="lane-player">{{ data.name }}</span>
+            </div>
+            <div class="pool">
+                {% for c in data.champs %}
+                <div class="pick-chip" onclick="pick('{{ role }}', this)"
+                     data-name="{{ c.name }}" data-icon="{{ c.icon }}" data-wr="{{ c.wr }}" data-games="{{ c.games }}">
+                    <img src="{{ c.icon }}" onerror="this.style.display='none'">
+                    <span>{{ c.name }}</span>
+                    <span class="wr {% if c.wr < 50 %}wr-low{% else %}wr-high{% endif %}">{{ c.wr }}%</span>
+                    <span class="text-muted">({{ c.games }})</span>
+                </div>
+                {% else %}
+                <span class="empty-note">No recorded games for {{ data.name }} yet.</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel p-3 draft-summary">
+            <div class="panel-title">Your draft</div>
+            <div id="slots">
+                {% for role in pool.keys() %}
+                <div class="slot" id="slot-{{ role }}">
+                    <div class="slot-empty"></div>
+                    <div><div class="lane-role">{{ role }}</div><div class="lane-player text-muted">— pick a champion —</div></div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="text-center mt-3 pt-2 border-top border-secondary">
+                <div class="big-wr" id="avgWr">—</div>
+                <div class="text-muted small">Avg pick winrate (picked lanes)</div>
+                <div class="text-muted small mt-1" id="gameCount"></div>
+            </div>
+
+            <div class="disclaimer">
+                Sample size from scrims is small — treat winrates as directional, not predictive.
+                This board shows how each pick has performed for your player historically, it is not a match-outcome forecast.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const draft = {};
+
+function pick(role, el) {
+    const lane = el.closest('.lane');
+    lane.querySelectorAll('.pick-chip').forEach(c => c.classList.remove('selected'));
+
+    if (draft[role] && draft[role].name === el.dataset.name) {
+        delete draft[role];
+    } else {
+        el.classList.add('selected');
+        draft[role] = {
+            name: el.dataset.name, icon: el.dataset.icon,
+            wr: parseInt(el.dataset.wr), games: parseInt(el.dataset.games)
+        };
+    }
+    render();
+}
+
+function render() {
+    let totalWr = 0, count = 0, totalGames = 0;
+    document.querySelectorAll('#slots .slot').forEach(slot => {
+        const role = slot.id.replace('slot-', '');
+        const d = draft[role];
+        const roleLabel = `<div class="lane-role">${role}</div>`;
+        if (d) {
+            slot.innerHTML = `<img src="${d.icon}" class="slot-icon" onerror="this.style.display='none'">
+                <div>${roleLabel}<div class="lane-player" style="color:#fff">${d.name}
+                <span class="${d.wr<50?'wr-low':'wr-high'}">${d.wr}%</span>
+                <span class="text-muted">(${d.games}g)</span></div></div>`;
+            totalWr += d.wr; count++; totalGames += d.games;
+        } else {
+            slot.innerHTML = `<div class="slot-empty"></div><div>${roleLabel}
+                <div class="lane-player text-muted">— pick a champion —</div></div>`;
+        }
+    });
+    document.getElementById('avgWr').textContent = count ? Math.round(totalWr/count) + '%' : '—';
+    document.getElementById('avgWr').className = 'big-wr ' + (count && totalWr/count < 50 ? 'wr-low' : 'wr-high');
+    document.getElementById('gameCount').textContent = count ? `${count}/5 lanes · ${totalGames} games in sample` : '';
+}
+
+function resetDraft() {
+    for (const k in draft) delete draft[k];
+    document.querySelectorAll('.pick-chip.selected').forEach(c => c.classList.remove('selected'));
+    render();
+}
+</script>
+{% endblock %}
